@@ -1,6 +1,9 @@
 package com.grafkom.viewing3d;
 
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
+
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
@@ -13,7 +16,7 @@ public class Texture2D {
     private int textureID;
     private boolean isBilinear = true;
 
-    public Texture2D(String filePath) {
+    public Texture2D(String resourcePath) {
         textureID = glGenTextures();
         glBindTexture(GL_TEXTURE_2D, textureID);
 
@@ -23,20 +26,35 @@ public class Texture2D {
         setFilterMode(true);
 
         stbi_set_flip_vertically_on_load(true);
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            IntBuffer width = stack.mallocInt(1);
-            IntBuffer height = stack.mallocInt(1);
-            IntBuffer channels = stack.mallocInt(1);
 
-            ByteBuffer data = stbi_load(filePath, width, height, channels, 4);
-            if (data != null) {
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width.get(0), height.get(0), 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                glGenerateMipmap(GL_TEXTURE_2D);
-                stbi_image_free(data);
-                System.out.println("Texture loaded successfully: " + filePath);
-            } else {
-                System.err.println("Failed to load texture: " + filePath + " Reason: " + stbi_failure_reason());
+        try (InputStream is = getClass().getResourceAsStream(resourcePath)) {
+            if (is == null) {
+                System.err.println("Texture resource not found: " + resourcePath);
+                return;
             }
+            byte[] bytes = is.readAllBytes();
+            ByteBuffer buffer = MemoryUtil.memAlloc(bytes.length);
+            buffer.put(bytes).flip();
+
+            try (MemoryStack stack = MemoryStack.stackPush()) {
+                IntBuffer width = stack.mallocInt(1);
+                IntBuffer height = stack.mallocInt(1);
+                IntBuffer channels = stack.mallocInt(1);
+
+                ByteBuffer data = stbi_load_from_memory(buffer, width, height, channels, 4);
+                if (data != null) {
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width.get(0), height.get(0), 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                    glGenerateMipmap(GL_TEXTURE_2D);
+                    stbi_image_free(data);
+                    System.out.println("Texture loaded successfully!");
+                } else {
+                    System.err.println("Failed to load texture data: " + stbi_failure_reason());
+                }
+            } finally {
+                MemoryUtil.memFree(buffer);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
