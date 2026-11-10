@@ -127,8 +127,7 @@ public class ThreeDViewing {
         shadowMapFBO = new ShadowMapFBO();
 
         // Load Texture
-        String texPath = getClass().getResource("/textures/wood_checker.png").getPath();
-        woodTexture = new Texture2D(texPath);
+        woodTexture = new Texture2D("/textures/wood_checker.png");
 
         // Meshes
         cubeMesh = Mesh3D.createCube(2.0f);
